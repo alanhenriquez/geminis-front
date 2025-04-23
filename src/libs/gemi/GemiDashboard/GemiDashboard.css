@@ -1,0 +1,99 @@
+
+
+
+.gemi-pannel {
+    display: grid;
+    grid-template-areas:
+        "header header"
+        "sidebar content"
+        "footer footer"
+    ;
+    /* Ancho relativo para la barra lateral */
+    grid-template-columns: 0.175fr 1fr;
+    /* Altura flexible para el contenido */
+    grid-template-rows: auto 1fr auto;
+    min-height: 100vh;
+}
+
+
+
+/* Header -------------------------------------------------------------------------------------- */
+
+
+
+.gemi-pannel .header {
+    grid-area: header;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.gemi-pannel .header h1 {
+    font-size: 1.5rem;
+    font-family: "Roboto-11";
+}
+
+.gemi-pannel .header-nav ul {
+    list-style: none;
+    display: flex;
+    gap: 1rem;
+}
+
+.gemi-pannel .header-nav a {
+    text-decoration: none;
+}
+
+
+
+/* Sidebar ------------------------------------------------------------------------------------- */
+
+
+
+.gemi-pannel .sidebar {
+    grid-area: sidebar;
+    padding: 1rem;
+}
+
+.gemi-pannel .sidebar-nav ul {
+    list-style: none;
+}
+
+.gemi-pannel .sidebar-nav a {
+    text-decoration: none;
+    display: block;
+    padding: 0.5rem 0;
+}
+
+
+
+/* Content ------------------------------------------------------------------------------------- */
+
+
+
+.gemi-pannel .content {
+    grid-area: content;
+    padding: 1rem;
+    border-top-left-radius: 2rem;
+    background-color: var(--clarence);
+    overflow-y: auto;
+    box-shadow: inset 0 10px 10px -10px rgba(0, 0, 0, 0.1); /* Sombra interna superior */
+    /* box-shadow: inset 0 -10px 10px -10px rgba(0, 0, 0, 0.1); */ /* Sombra interna inferior */
+    /* box-shadow: inset 10px 0 10px -10px rgba(0, 0, 0, 0.1); */ /* Sombra interna izquierda */
+    /* box-shadow: inset -10px 0 10px -10px rgba(0, 0, 0, 0.1); */ /* Sombra interna derecha */
+}
+
+
+
+/* Footer -------------------------------------------------------------------------------------- */
+
+
+
+.gemi-pannel .footer {
+    grid-area: footer;
+    background-color: #333;
+    color: white;
+    text-align: center;
+    padding: 1rem;
+    display: none;
+}
