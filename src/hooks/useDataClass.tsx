@@ -167,8 +167,8 @@ type UseDataClassMethods<T> = Readonly<{
  * @typedef {Object} UseDataClassPlugins
  * @property {Function} [pluginName] - Un método personalizado que toma los datos y devuelve un valor o una promesa.
  */
-type UseDataClassPlugins<T> = {
-    [key: string]: (data: T) => any | Promise<any>;
+type UseDataClassPlugins<T, P extends Record<string, (data: T) => unknown>> = {
+    [K in keyof P]: () => ReturnType<P[K]>;
 };
 
 /**
@@ -178,9 +178,9 @@ type UseDataClassPlugins<T> = {
  * @property {T} data - El objeto principal de datos inmutables.
  * @property {UseDataClassPlugins<T>} [plugins] - Métodos adicionales definidos por el usuario.
  */
-type UseDataClassParams<T> = Readonly<{
+type UseDataClassParams<T, P extends Record<string, (data: T) => unknown>> = Readonly<{
     data: T; // El objeto principal de datos
-    plugins?: UseDataClassPlugins<T>; // Métodos adicionales definidos por el usuario
+    plugins?: P; // Métodos adicionales definidos por el usuario
     propTypes: Record<keyof T, { type: usePropTypesValidator }>; // Validaciones de tipos para `data`
 }>;
 
@@ -393,16 +393,23 @@ function createDefaultMethods<T>(data: Readonly<T>): UseDataClassMethods<T> {
 /**
  * Función auxiliar para integrar plugins.
  * @template T - El tipo de los datos inmutables.
+ * @template P - El tipo de los plugins personalizados.
  * @param {Readonly<T>} data - Los datos inmutables.
- * @param {UseDataClassPlugins<T>} customPlugins - Los plugins personalizados.
- * @returns {UseDataClassPlugins<T>} - Un objeto con los plugins integrados.
+ * @param {P} customPlugins - Los plugins personalizados.
+ * @returns {UseDataClassPlugins<T, P>} - Un objeto con los plugins integrados.
  */
-function integratePlugins<T>( data: Readonly<T>, customPlugins: UseDataClassPlugins<T>): UseDataClassPlugins<T> {
-    const result: UseDataClassPlugins<T> = {};
+function integratePlugins<T, P extends Record<string, (data: T) => unknown>>(
+    data: Readonly<T>,
+    customPlugins: P
+): UseDataClassPlugins<T, P> {
+    const result: Partial<UseDataClassPlugins<T, P>> = {};
     for (const [key, plugin] of Object.entries(customPlugins)) {
-        result[key] = () => plugin(data);
+        if (typeof plugin !== "function") {
+            throw new Error(`El plugin '${key}' debe ser una función.`);
+        }
+        result[key as keyof P] = (() => plugin(data)) as () => ReturnType<P[keyof P]>;
     }
-    return result;
+    return result as UseDataClassPlugins<T, P>;
 }
 
 
@@ -446,14 +453,14 @@ function integratePlugins<T>( data: Readonly<T>, customPlugins: UseDataClassPlug
  *     );
  * };
  */
-function useDataClass<T extends Record<string, any>>(
-    props: UseDataClassParams<T>
+function useDataClass<T extends Record<string, any>, P extends Record<string, (data: T) => unknown> = never>(
+    props: UseDataClassParams<T, P>
 ): Readonly<{
     data: T;
     methods: UseDataClassMethods<T>;
-    plugins: UseDataClassPlugins<T>;
+    plugins: UseDataClassPlugins<T, P>;
 }> {
-    const { data: initialData, plugins: customPlugins = {}, propTypes } = props;
+    const { data: initialData, plugins: customPlugins = {} as P, propTypes } = props;
 
     // Validar los tipos de `data` usando `usePropTypes`
     usePropTypes(initialData, (propTypes || {}) as Record<keyof T, { type: usePropTypesValidator }>);
@@ -465,20 +472,10 @@ function useDataClass<T extends Record<string, any>>(
     const methods = useMemo(() => createDefaultMethods(data), [data]);
 
     // Integrar plugins
-    const plugins = useMemo(
-        () => integratePlugins(data, customPlugins),
-        [data, customPlugins]
-    );
+    const plugins = useMemo(() => integratePlugins(data, customPlugins), [data, customPlugins]);
 
     // Retornar el objeto completo
-    return useMemo(
-        () => ({
-            data,
-            methods,
-            plugins,
-        }),
-        [data, methods, plugins]
-    );
+    return useMemo(() => ({ data, methods, plugins }), [data, methods, plugins]);
 }
 
 
