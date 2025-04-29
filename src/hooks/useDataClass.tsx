@@ -162,26 +162,16 @@ type UseDataClassMethods<T> = Readonly<{
 }>;
 
 /**
- * Define los plugins personalizados que pueden ser integrados en la instancia creada por `useDataClass`.
- * @template T - El tipo de los datos inmutables.
- * @typedef {Object} UseDataClassPlugins
- * @property {Function} [pluginName] - Un método personalizado que toma los datos y devuelve un valor o una promesa.
- */
-type UseDataClassPlugins<T, P extends Record<string, (data: T) => unknown>> = {
-    [K in keyof P]: () => ReturnType<P[K]>;
-};
-
-/**
  * Define los parámetros requeridos para inicializar `useDataClass`.
  * @template T - El tipo de los datos inmutables.
  * @typedef {Object} UseDataClassParams
  * @property {T} data - El objeto principal de datos inmutables.
  * @property {UseDataClassPlugins<T>} [plugins] - Métodos adicionales definidos por el usuario.
  */
-type UseDataClassParams<T, P extends Record<string, (data: T) => unknown>> = Readonly<{
-    data: T; // El objeto principal de datos
-    plugins?: P; // Métodos adicionales definidos por el usuario
-    propTypes: Record<keyof T, { type: usePropTypesValidator }>; // Validaciones de tipos para `data`
+type UseDataClassParams<T> = Readonly<{
+    data: T;
+    propTypes: Record<keyof T, { type: usePropTypesValidator }>;
+    effectDependencies: React.DependencyList;
 }>;
 
 
@@ -198,7 +188,10 @@ type UseDataClassParams<T, P extends Record<string, (data: T) => unknown>> = Rea
  * @param {Readonly<T>} data - Los datos inmutables.
  * @returns {UseDataClassMethods<T>} - Un objeto con los métodos predeterminados.
  */
-function createDefaultMethods<T>(data: Readonly<T>): UseDataClassMethods<T> {
+function createDefaultMethods<T>(
+    data: Readonly<T>,
+): UseDataClassMethods<T> {
+
     /**
      * Método para generar una representación en string del objeto.
      * @returns {string} - Representación en string del objeto.
@@ -282,11 +275,9 @@ function createDefaultMethods<T>(data: Readonly<T>): UseDataClassMethods<T> {
      * console.log(pickedInstance.data); // { name: "John", city: "New York" }
      */
     const pick = (keys: Array<keyof T>): Readonly<{ data: Partial<T> }> => {
-        // Validar que `keys` sea un array
         if (!Array.isArray(keys)) {
             throw new Error(`El parámetro 'keys' debe ser un array. Valor recibido: ${JSON.stringify(keys)}`);
         }
-
         const pickedData = Object.freeze(
             keys.reduce((acc, key) => {
                 if (key in data) acc[key] = data[key];
@@ -390,28 +381,6 @@ function createDefaultMethods<T>(data: Readonly<T>): UseDataClassMethods<T> {
     };
 }
 
-/**
- * Función auxiliar para integrar plugins.
- * @template T - El tipo de los datos inmutables.
- * @template P - El tipo de los plugins personalizados.
- * @param {Readonly<T>} data - Los datos inmutables.
- * @param {P} customPlugins - Los plugins personalizados.
- * @returns {UseDataClassPlugins<T, P>} - Un objeto con los plugins integrados.
- */
-function integratePlugins<T, P extends Record<string, (data: T) => unknown>>(
-    data: Readonly<T>,
-    customPlugins: P
-): UseDataClassPlugins<T, P> {
-    const result: Partial<UseDataClassPlugins<T, P>> = {};
-    for (const [key, plugin] of Object.entries(customPlugins)) {
-        if (typeof plugin !== "function") {
-            throw new Error(`El plugin '${key}' debe ser una función.`);
-        }
-        result[key as keyof P] = (() => plugin(data)) as () => ReturnType<P[keyof P]>;
-    }
-    return result as UseDataClassPlugins<T, P>;
-}
-
 
 
 /*///////////////////////////////////////////////////////////////////////////////////////////////*/
@@ -431,15 +400,11 @@ function integratePlugins<T, P extends Record<string, (data: T) => unknown>>(
  * import useDataClass from './useDataClass';
  * 
  * const MyComponent = () => {
- *     const { data, methods, plugins } = useDataClass({
+ *     const { data, methods } = useDataClass({
  *         data: { name: "John", age: 30 },
  *         propTypes: {
  *             name: { type: types.string },
  *             age: { type: types.number }
- *         },
- *         plugins: {
- *             greet: (data) => `Hello, ${data.name}!`,
- *             isAdult: (data) => data.age >= 18
  *         }
  *     });
  * 
@@ -447,35 +412,29 @@ function integratePlugins<T, P extends Record<string, (data: T) => unknown>>(
  *         <div>
  *             <h1>{methods.toString()}</h1>
  *             <p>HashCode: {methods.hashCode()}</p>
- *             <p>Greeting: {plugins.greet()}</p>
- *             <p>Is Adult: {plugins.isAdult() ? 'Yes' : 'No'}</p>
  *         </div>
  *     );
  * };
  */
-function useDataClass<T extends Record<string, any>, P extends Record<string, (data: T) => unknown> = never>(
-    props: UseDataClassParams<T, P>
+function useDataClass<T extends Record<string, any>>(
+    props: UseDataClassParams<T>
 ): Readonly<{
     data: T;
     methods: UseDataClassMethods<T>;
-    plugins: UseDataClassPlugins<T, P>;
 }> {
-    const { data: initialData, plugins: customPlugins = {} as P, propTypes } = props;
-
-    // Validar los tipos de `data` usando `usePropTypes`
-    usePropTypes(initialData, (propTypes || {}) as Record<keyof T, { type: usePropTypesValidator }>);
+    const { data: initialData, propTypes, effectDependencies } = props;
 
     // Asegurar inmutabilidad de los datos
     const data = useMemo(() => Object.freeze({ ...initialData }), [initialData]);
 
-    // Crear métodos predeterminados
+    // Función para validar los datos
+    usePropTypes(data, (propTypes || {}) as Record<keyof T, { type: usePropTypesValidator }>, effectDependencies);
+
+    // Crear métodos predeterminados con validación incorporada
     const methods = useMemo(() => createDefaultMethods(data), [data]);
 
-    // Integrar plugins
-    const plugins = useMemo(() => integratePlugins(data, customPlugins), [data, customPlugins]);
-
     // Retornar el objeto completo
-    return useMemo(() => ({ data, methods, plugins }), [data, methods, plugins]);
+    return useMemo(() => ({ data, methods }), [data, methods]);
 }
 
 

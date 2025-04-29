@@ -303,7 +303,7 @@ interface ArrayOfValidator {
  */
 interface OneOfValidator {
     validator: 'oneOf';
-    options: unknown[];
+    options: BasicType[];
 }
 
 /**
@@ -431,7 +431,7 @@ const types = {
      * // Validar que el valor sea 'red', 'green' o 'blue'
      * types.oneOf(['red', 'green', 'blue'])
      */
-    oneOf: (options: unknown[]): OneOfValidator => ({ validator: 'oneOf', options }),
+    oneOf: (options: BasicType[]): OneOfValidator => ({ validator: 'oneOf', options }),
 
     /**
      * Valida que el valor cumpla con uno de los tipos especificados.
@@ -573,7 +573,8 @@ const removeKey = <T extends object>(obj: T, keyToRemove: keyof T): Omit<T, keyo
  */
 function usePropTypes<P extends Record<string, unknown>>(
     props: P,
-    propTypes: Record<keyof P, { type: usePropTypesValidator }>
+    propTypes: Record<keyof P, { type: usePropTypesValidator }>,
+    effectDependencies: React.DependencyList = []
 ) {
     useEffect(() => {
         if (props && propTypes) {
@@ -704,7 +705,7 @@ ${validationResult}
                 }
             });
         }
-    }, [props, propTypes]);
+    }, [props, propTypes, ...effectDependencies]);
 }
 
 

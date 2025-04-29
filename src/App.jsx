@@ -11,27 +11,17 @@ function App() {
     const [count, setCount] = useState(0)
     
     
-    const data = useDataClass(
-        {
-            data: { name: "John", age: 30 },
-            propTypes: {
-                name: { type: types.string },
-                age: { type: types.number },
-            },
-            plugins: {
-                greet: (data) => `Hello, ${data.name}!`,
-                isAdult: (data) => data.age >= 18,
-            }
-        }
-    );
+    const data = useDataClass({
+        data: { name: "John", age: 30 },
+    });
     
     // Métodos predeterminados
-    console.log(data.methods.toString()); // DataClass(name="John", age=30)
-    console.log(data.methods.hashCode()); // Ejemplo: 123456789
-    
-    // Plugins personalizados
-    console.log(data.plugins.greet(data)); // "Hello, John!"
-    console.log(data.plugins.isAdult(data)); // true
+    console.log(data.methods.toString()); // Autocompletado para `toString()`
+    console.log(data.methods.hashCode()); // Autocompletado para `hashCode()`
+    console.log(data.methods.equals({ name: "John", age: 30 })); // Autocompletado para `equals()`
+    console.log(data.methods.equals({ name: "Jane", age: 25 })); // Autocompletado para `equals()`
+    console.log(data.methods.merge({ name: "Jane", age: "25" })); // Autocompletado para `merge()`
+
 
 
     return (
